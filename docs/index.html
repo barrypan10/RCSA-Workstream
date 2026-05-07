@@ -23,8 +23,18 @@
       <span class="dot"></span>
       <span id="state-pill-text">Initializing…</span>
     </div>
-    <button id="reset-btn" class="btn" title="Reset to initial state">Reset simulation</button>
+    <label class="demo-voice-toggle" title="Read the script aloud during Demo Mode using browser text-to-speech"><input type="checkbox" id="demo-voice-cb" checked /><span>🔊 Voiceover</span></label>
+    <button id="demo-btn" class="btn btn-primary" title="Auto-run a 90-second guided walkthrough with AI highlights">▶ Demo Mode (1:30)</button>
+    <button id="reset-btn" class="btn" title="Reset to initial state">Reset</button>
   </header>
+
+  <div id="demo-progress" class="demo-progress is-hidden"><div class="demo-progress-bar"></div></div>
+  <div id="demo-highlight" class="ai-highlight-overlay is-hidden"></div>
+  <div id="demo-caption" class="demo-caption is-hidden"></div>
+  <div id="demo-stop" class="demo-stop-floating is-hidden">
+    <span class="demo-stop-label">▶ Demo running…</span>
+    <button id="demo-stop-btn" class="btn">Stop</button>
+  </div>
 
   <nav class="tabbar" role="tablist" aria-label="Main views">
     <button class="tab is-active" role="tab" data-tab="map" aria-selected="true" aria-controls="tab-map">

@@ -13,14 +13,30 @@
   const NODE_Y_PAD = (LANE_H - NODE_H) / 2;
   const LABEL_W = 180;
   const STAGE_BAND_H = 24;
-  const LOOP_CHANNEL_GAP = 30;
+
+  // Loop-back channel routing: each backward edge gets its own dedicated y so
+  // labels never overlap.
+  const LOOP_FIRST_OFFSET = 28;   // gap below last lane before first channel
+  const LOOP_Y_STEP = 24;         // vertical gap between channels
+  const LOOP_BAND_PAD = 28;       // space below last channel for label clearance
 
   const stepById = Object.fromEntries(STEPS.map(s => [s.id, s]));
   const laneIndex = Object.fromEntries(LANES.map((l, i) => [l.id, i]));
   const maxCol = Math.max(...STEPS.map(s => s.col));
   const trackWidth = (maxCol + 1) * COL_W;
   const totalLaneHeight = LANES.length * LANE_H;
-  const overlayHeight = totalLaneHeight + LOOP_CHANNEL_GAP * 2;
+
+  // Pre-compute loop-back index per backward edge.
+  const loopbackIdxByEdge = {};
+  let _lbCounter = 0;
+  EDGES.forEach(e => {
+    const aCol = stepById[e.from].col;
+    const bCol = stepById[e.to].col;
+    if (bCol < aCol) loopbackIdxByEdge[`${e.from}__${e.to}`] = _lbCounter++;
+  });
+  const numLoopbacks = _lbCounter;
+  const loopBandHeight = LOOP_FIRST_OFFSET + Math.max(0, numLoopbacks - 1) * LOOP_Y_STEP + LOOP_BAND_PAD;
+  const overlayHeight = totalLaneHeight + loopBandHeight;
 
   function nodePos(step) {
     const li = laneIndex[step.lane];
@@ -146,13 +162,12 @@
 
     let d, labelX, labelY;
     if (goesBackward) {
-      const baseChannel = totalLaneHeight + 4;
-      const stagger = (idx % 5) * 6;
-      const channel = baseChannel + stagger;
+      const lbIdx = loopbackIdxByEdge[`${edge.from}__${edge.to}`] ?? 0;
+      const channel = totalLaneHeight + LOOP_FIRST_OFFSET + lbIdx * LOOP_Y_STEP;
       const startX = pa.cx, startY = pa.bottom, endX = pb.cx, endY = pb.bottom;
       d = `M ${startX} ${startY} V ${channel} H ${endX} V ${endY}`;
       labelX = (startX + endX) / 2;
-      labelY = channel - 6;
+      labelY = channel - 7;
     } else if (sameLane && colDelta === 1) {
       const startX = pa.right, startY = pa.cy, endX = pb.left, endY = pb.cy;
       d = `M ${startX} ${startY} H ${endX}`;
@@ -899,6 +914,321 @@
     auditEl.classList.toggle('collapsed');
     document.getElementById('audit-toggle').textContent = auditEl.classList.contains('collapsed') ? '▸' : '▾';
   });
+
+  // ---------- Demo Mode ----------
+  // 90-second guided walkthrough that auto-advances the workflow with
+  // on-screen "AI HIGHLIGHT" callouts at every AI-augmented step.
+
+  const DEMO_SCRIPT = [
+    { kind: 'caption',   text: 'Cyber RCSA — AI-Enabled Workflow',
+      narration: 'Cyber RCSA today is manual, fragmented, and slow. This is what an AI-enabled workflow looks like.',
+      dur: 7000 },
+    { kind: 'tab',       to: 'map',                                dur: 500 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 1 / 7', text: 'AI auto-triages the trigger and recommends Full RCSA scope.',
+      spotlight: 'node:trigger',
+      narration: 'It starts with a trigger. AI auto-triages and recommends the right RCSA scope. The Cyber RCSA Lead approves.',
+      dur: 8000 },
+    { kind: 'advance',   to: 'step1',                              dur: 800 },
+    { kind: 'advance',   to: 'step2',                              dur: 700 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 2 / 7', text: 'AI surfaces 6 candidate risks — 2 previously missed by the team.',
+      spotlight: 'node:step2',
+      narration: 'AI mines prior cycles, audits, and incidents to surface six candidate risks — two previously missed.',
+      dur: 7500 },
+    { kind: 'advance',   to: 'step3',                              dur: 700 },
+    { kind: 'advance',   to: 'step4',                              dur: 700 },
+    { kind: 'advance',   to: 'step5',                              dur: 700 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 3 / 7', text: 'AI flags 3 ineffective controls and 1 with missing evidence.',
+      spotlight: 'node:step5',
+      narration: 'In control testing, AI flags three ineffective controls and one with missing evidence.',
+      dur: 6500 },
+    { kind: 'advance',   to: 'step6', via: 1,                      dur: 900 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 4 / 7', text: 'AI clusters gaps and drafts JIRA + ServiceNow tickets — owners auto-assigned from CMDB.',
+      spotlight: 'node:step6',
+      narration: 'AI clusters the gaps, then drafts JIRA tickets and a ServiceNow change — with owners auto-assigned from the CMDB.',
+      dur: 8500 },
+    { kind: 'advance',   to: 'step7',                              dur: 700 },
+    { kind: 'advance',   to: 'step5', via: 0,                      dur: 800 },
+    { kind: 'advance',   to: 'step8', via: 0,                      dur: 700 },
+    { kind: 'advance',   to: 'step9', via: 0,                      dur: 700 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 5 / 7', text: 'AI pre-submission QC — flags weak items before 2LOD review.',
+      spotlight: 'node:step9',
+      narration: 'Pre-submission, AI runs quality control — catching weak items before 2LOD ever sees the package.',
+      dur: 7000 },
+    { kind: 'advance',   to: 'step10',                             dur: 800 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 6 / 7', text: 'AI 2LOD challenge brief — outliers detected vs. peer apps.',
+      spotlight: 'node:step10',
+      narration: 'At 2LOD, AI generates the challenge brief — surfacing outliers and unexplained rating changes.',
+      dur: 6500 },
+    { kind: 'advance',   to: 'step11', via: 3,                     dur: 800 },
+    { kind: 'advance',   to: 'step12',                             dur: 800 },
+
+    { kind: 'highlight', tag: 'AI HIGHLIGHT 7 / 7', text: 'AI continuous monitoring — KRI breach detected, recommends a new cycle.',
+      spotlight: 'node:step12',
+      narration: 'And it does not stop at approval. AI continuously monitors KRIs and SIEM signals.',
+      dur: 6500 },
+
+    { kind: 'tab',       to: 'report',                             dur: 800 },
+    { kind: 'caption',   text: 'Findings Report — auto-generated with full role-attributed audit trail.',
+      spotlight: 'report-stamp',
+      narration: 'The platform auto-generates a complete Findings Report — every AI suggestion and every human decision attributed by role.',
+      dur: 8000 },
+    { kind: 'scroll',    to: 'middle',                             dur: 3000 },
+    { kind: 'scroll',    to: 'bottom',                             dur: 3000 },
+    { kind: 'caption',   text: 'AI accelerates. Humans decide. Every step auditable.',
+      narration: 'AI accelerates every bottleneck. Humans hold every material decision. Every step, fully auditable.',
+      dur: 6500 },
+    { kind: 'end' }
+  ];
+
+  const demo = {
+    running: false,
+    timers: [],
+    totalDur: 0,
+    elapsed: 0,
+    cancel: false,
+    voiceEnabled: true,
+    preferredVoice: null
+  };
+
+  // Browser TTS voice setup
+  function loadVoice() {
+    if (!window.speechSynthesis) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || !voices.length) return;
+    demo.preferredVoice =
+      voices.find(v => /Microsoft\s+(Aria|Jenny|Davis|Guy|Tony)/i.test(v.name)) ||
+      voices.find(v => /Google.*US English/i.test(v.name)) ||
+      voices.find(v => /^en-US$/i.test(v.lang)) ||
+      voices.find(v => /^en/i.test(v.lang)) ||
+      null;
+  }
+  if (window.speechSynthesis) {
+    loadVoice();
+    window.speechSynthesis.onvoiceschanged = loadVoice;
+  }
+
+  function speakNarration(text) {
+    if (!demo.voiceEnabled || !window.speechSynthesis || !text) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    if (demo.preferredVoice) u.voice = demo.preferredVoice;
+    window.speechSynthesis.speak(u);
+  }
+  function stopSpeak() {
+    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  }
+
+  // Spotlight — red box drawing the eye to the highlighted element
+  function applySpotlight(target) {
+    clearSpotlight();
+    if (!target) return;
+    if (target.startsWith('node:')) {
+      const id = target.slice(5);
+      const node = document.querySelector(`.node[data-step-id="${id}"]`);
+      if (node) node.classList.add('is-demo-spotlight');
+    } else if (target === 'report-stamp') {
+      const stamp = document.querySelector('.report-stamp');
+      if (stamp) stamp.classList.add('is-demo-spotlight');
+    }
+  }
+  function clearSpotlight() {
+    document.querySelectorAll('.is-demo-spotlight').forEach(el => el.classList.remove('is-demo-spotlight'));
+  }
+
+  function totalDuration(script) {
+    return script.reduce((s, c) => s + (c.dur || 0), 0);
+  }
+
+  function startDemo() {
+    if (demo.running) return;
+    demo.voiceEnabled = !!document.getElementById('demo-voice-cb').checked;
+    demo.running = true;
+    demo.cancel = false;
+    demo.elapsed = 0;
+    demo.totalDur = totalDuration(DEMO_SCRIPT);
+    document.body.classList.add('is-demo-running');
+    document.getElementById('demo-progress').classList.remove('is-hidden');
+    document.getElementById('demo-stop').classList.remove('is-hidden');
+
+    // Some browsers need a "warm-up" utterance to unlock TTS reliably.
+    if (demo.voiceEnabled && window.speechSynthesis) {
+      try {
+        loadVoice();
+        const warm = new SpeechSynthesisUtterance(' ');
+        warm.volume = 0;
+        window.speechSynthesis.speak(warm);
+      } catch (e) {}
+    }
+
+    state = freshState();
+    state.history = [];
+    logAudit('system', 'Demo Mode started — 90-second guided walkthrough.');
+    switchTab('map');
+    renderAll();
+
+    runDemoSequence();
+  }
+
+  function stopDemo(reason) {
+    if (!demo.running) return;
+    demo.cancel = true;
+    demo.timers.forEach(t => { try { clearTimeout(t); } catch (e) {} try { clearInterval(t._); } catch (e) {} });
+    demo.timers = [];
+    demo.running = false;
+    document.body.classList.remove('is-demo-running');
+    hideHighlight(true);
+    hideCaption(true);
+    clearSpotlight();
+    stopSpeak();
+    document.getElementById('demo-stop').classList.add('is-hidden');
+    const prog = document.getElementById('demo-progress');
+    prog.classList.add('is-hidden');
+    prog.querySelector('.demo-progress-bar').style.width = '0%';
+    if (reason) logAudit('system', `Demo Mode ended (${reason}).`);
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => {
+      const t = setTimeout(() => {
+        demo.timers = demo.timers.filter(x => x !== t);
+        resolve();
+      }, ms);
+      demo.timers.push(t);
+    });
+  }
+
+  function tickProgress(stepDur) {
+    const start = demo.elapsed;
+    const end = demo.elapsed + stepDur;
+    const t0 = performance.now();
+    const bar = document.querySelector('#demo-progress .demo-progress-bar');
+    const interval = setInterval(() => {
+      if (demo.cancel) { clearInterval(interval); return; }
+      const dt = performance.now() - t0;
+      const cur = Math.min(start + dt, end);
+      const pct = (cur / demo.totalDur) * 100;
+      if (bar) bar.style.width = pct + '%';
+      if (dt >= stepDur) clearInterval(interval);
+    }, 100);
+    demo.timers.push({ kind: 'interval', _: interval });
+  }
+
+  async function runDemoSequence() {
+    for (let i = 0; i < DEMO_SCRIPT.length; i++) {
+      if (demo.cancel) return;
+      const cmd = DEMO_SCRIPT[i];
+      const dur = cmd.dur || 0;
+      tickProgress(dur);
+
+      switch (cmd.kind) {
+        case 'caption':
+          if (cmd.spotlight) applySpotlight(cmd.spotlight);
+          showCaption(cmd.text);
+          if (cmd.narration) speakNarration(cmd.narration);
+          await delay(dur);
+          hideCaption();
+          if (cmd.spotlight) clearSpotlight();
+          break;
+        case 'highlight':
+          if (cmd.spotlight) applySpotlight(cmd.spotlight);
+          showHighlight(cmd.tag || 'AI HIGHLIGHT', cmd.text);
+          if (cmd.narration) speakNarration(cmd.narration);
+          await delay(dur);
+          hideHighlight();
+          if (cmd.spotlight) clearSpotlight();
+          break;
+        case 'tab':
+          switchTab(cmd.to);
+          await delay(dur);
+          break;
+        case 'advance':
+          demoAdvance(cmd.to, cmd.via);
+          await delay(dur);
+          break;
+        case 'scroll':
+          demoScroll(cmd.to);
+          await delay(dur);
+          break;
+        case 'end':
+          break;
+      }
+      demo.elapsed += dur;
+    }
+    if (!demo.cancel) {
+      // Final flourish
+      const bar = document.querySelector('#demo-progress .demo-progress-bar');
+      if (bar) bar.style.width = '100%';
+      await delay(800);
+      stopDemo('completed');
+    }
+  }
+
+  function demoAdvance(targetId, actionIdx) {
+    const step = stepById[state.currentStepId];
+    if (!step || !step.humanCheckpoint) return;
+    let action = null;
+    if (typeof actionIdx === 'number') {
+      action = step.humanCheckpoint.actions[actionIdx];
+    } else {
+      action = step.humanCheckpoint.actions.find(a => a.target === targetId);
+    }
+    if (!action) {
+      // Fallback: directly advance
+      advanceTo(targetId);
+      return;
+    }
+    handleHumanAction(step, action);
+  }
+
+  function demoScroll(target) {
+    const view = document.getElementById('tab-report');
+    if (!view) return;
+    if (target === 'top')    view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (target === 'middle') {
+      const stamp = view.querySelector('.report-stamp');
+      const target2 = view.querySelector('h2:nth-of-type(6)') || stamp;
+      if (target2) target2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (target === 'bottom') {
+      const stamp = view.querySelector('.report-stamp');
+      if (stamp) stamp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function showHighlight(tag, text) {
+    const el = document.getElementById('demo-highlight');
+    el.classList.remove('is-leaving', 'is-hidden');
+    el.innerHTML = `<span class="hl-tag">${escapeHtml(tag)}</span><span>${escapeHtml(text)}</span>`;
+  }
+  function hideHighlight(immediate) {
+    const el = document.getElementById('demo-highlight');
+    if (immediate) { el.classList.add('is-hidden'); return; }
+    el.classList.add('is-leaving');
+    const t = setTimeout(() => { el.classList.add('is-hidden'); el.classList.remove('is-leaving'); }, 220);
+    demo.timers.push(t);
+  }
+  function showCaption(text) {
+    const el = document.getElementById('demo-caption');
+    el.classList.remove('is-hidden');
+    el.textContent = text;
+  }
+  function hideCaption(immediate) {
+    const el = document.getElementById('demo-caption');
+    if (immediate) el.classList.add('is-hidden');
+    else el.classList.add('is-hidden');
+  }
+
+  document.getElementById('demo-btn').addEventListener('click', startDemo);
+  document.getElementById('demo-stop-btn').addEventListener('click', () => stopDemo('user stopped'));
 
   // Init
   buildSwimlanes();
