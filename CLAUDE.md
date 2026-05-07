@@ -62,6 +62,85 @@ Named individuals used in mock comments / Findings Report: M. Chen (Cyber RCSA L
 
 Tags: `v1`, `v2`, `v3` (annotated, on GitHub).
 
+## Feedback loops (loop-back routing)
+
+The workflow is not strictly linear — it contains six explicit feedback loops that any change to routing must preserve. Each is encoded in `EDGES` in `workflow.js` with `type: 'loopback'` and is rendered in its own dedicated horizontal channel below the swimlanes (vertically separated by 24px so labels don't collide).
+
+| # | From → To | Trigger condition | Why the loop exists |
+|---|---|---|---|
+| 1 | Step 5 → Step 6 (NO branch) | Control test fails (or evidence weak) | Failed controls become gaps that must be remediated before approval |
+| 2 | Step 7 → Step 5 (YES retest) | Remediation owner marks fix implemented | Re-verify the control is now operating effectively |
+| 3 | Step 7 → Step 7 (NO stay) | Fix not yet implemented | Remediation continues until done or formally escalated |
+| 4 | Step 8 → Step 6 (NO acceptable) | Residual risk above tolerance | Need to identify additional gaps / remediation |
+| 5 | Step 10 → Step 7 / 8 / 9 (issues found) | 2LOD challenge surfaces problem | Routes back to the *most relevant* upstream step depending on issue type (remediation, residual rationale, or submission quality) |
+| 6 | Step 12 → Trigger (new cycle) | Continuous monitoring breaches threshold | Restart the RCSA cycle; AI re-runs triage in the new context |
+
+Self-stay edges (Step 7 → Step 7, Step 12 → Step 12) are not drawn — they're recorded only in the audit trail.
+
+The simulation engine clears the AI memo for any step on entry (`delete state.aiResults[targetId]` in `advanceTo()`), so revisiting a step on a loop-back triggers a fresh AI run rather than a cached one.
+
+## Code structure
+
+Pure static HTML + CSS + vanilla JS. No build step, no dependencies, no framework. All runtime work happens in the browser.
+
+```
+docs/
+├─ index.html                 Page shell only — never holds workflow data
+├─ .nojekyll                  Empty file; tells GitHub Pages to skip Jekyll
+└─ assets/
+   ├─ workflow.js             Pure data: LANES, STAGES, STEPS, EDGES (canonical, mirrors File 1)
+   ├─ app.js                  Everything dynamic (one IIFE, ~700 lines)
+   │  ├─ Geometry layer       COL_W, LANE_H, NODE_W/H, loop-channel math
+   │  ├─ State                { currentStepId, selectedStepId, activeTab, history,
+   │  │                         visited, traversedEdges, decisions, userComments,
+   │  │                         terminated, approved, aiResults }
+   │  ├─ Build (one-time)     buildSwimlanes() → stage bands → lanes → SVG edges → nodes
+   │  ├─ Render (per state)   updateNodeStates / updateEdgeStates / renderActionPanel /
+   │  │                         renderStepDetail / renderFindingsReport / renderAudit
+   │  ├─ Mutators             handleHumanAction / advanceTo / runAi / logAudit
+   │  ├─ Tab 2 (GRC view)     detailDescriptionCard / WorkItems / NextSteps /
+   │  │                         AttachmentsCard / CommentsCard
+   │  ├─ Tab 3 (report)       renderFindingsReport / tableFromWorkItems / decisionsTable
+   │  └─ Demo Mode            DEMO_SCRIPT[] + runDemoSequence + speakNarration +
+   │                            applySpotlight + tickProgress
+   ├─ styles.css              Light enterprise GRC theme. Critical color tokens at top.
+   └─ capgemini-spade.png     Topbar brand mark (32×32)
+```
+
+**Data flow:** `workflow.js` exposes the spec on `window.__RCSA__`. `app.js` reads it once, builds the DOM, and from then on every UI update is a render function reading from `state` and writing to specific DOM elements. There's no virtual DOM — render functions just `innerHTML` their slot.
+
+**Single source of truth:** the workflow shape (steps, edges, stages, AI outputs, role titles, work items, attachments, comments, due dates) all lives in `workflow.js`. `app.js` is presentation only — it never hardcodes step IDs or labels (except the `DEMO_SCRIPT` sequence which references step IDs deliberately for the auto-walkthrough).
+
+**Adding a new step** touches three things in `workflow.js`: append to `STEPS`, add forward + any loop-back entries to `EDGES`, and update the relevant `STAGES` column range. No `app.js` changes needed unless the step has unusual rendering needs.
+
+## Git structure
+
+| | |
+|---|---|
+| Default branch | `main` |
+| GitHub Pages source | `main` branch, `/docs` folder (configured in repo Settings → Pages) |
+| Live URL | https://barrypan10.github.io/RCSA-Workstream/ |
+| Tag scheme | `v1`, `v2`, `v3`, … — annotated tags marking demo milestones, not formal SemVer |
+| Branching | None today. All work has been on `main`. Cut a feature branch for experimental work that shouldn't go live immediately. |
+| Pages deploy trigger | Any push to `main` that touches `/docs` → GitHub Pages rebuilds in ~30–60s. No GitHub Actions workflow; Pages does it natively. |
+
+**Commit conventions:**
+- Multi-line messages with bullets describing what shipped + why
+- **Always pass via `git commit -F .commit-msg-tmp.txt`** (write the message to a temp file first, then delete after commit) — PowerShell mangles inline `-m @'...'@` here-strings that contain `<` / `>` characters, including the `Co-Authored-By: ... <noreply@anthropic.com>` trailer
+- Trailer: `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` only when Claude wrote substantive code
+- One commit per cohesive change; tag at milestone boundaries
+
+**Tagging a milestone:**
+```
+git tag -a v4 -m "v4 - <one-line summary>"
+git push origin v4
+```
+
+**Restoring an older state:**
+- Browse a tag without changing your working tree: `git checkout v2` (read-only; `git checkout main` to come back)
+- Reset working tree to a tag (destructive): `git reset --hard v2` — only with explicit user permission
+- Cherry-pick a single change from a tag: `git cherry-pick <commit-from-tag>`
+
 ## Important things NOT in this repo (and why)
 
 - **`docs/source/` is intentionally absent.** Source markdowns live in `source/` (top level), not under `docs/`, so they aren't deployed to the public Pages URL.
