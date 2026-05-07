@@ -11,7 +11,8 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">RC</div>
+      <img class="brand-logo" src="assets/capgemini-spade.png" alt="Capgemini" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+      <div class="brand-mark" style="display:none;">RC</div>
       <div class="brand-text">
         <span class="title">Cyber RCSA — AI-Enabled Workflow</span>
         <span class="sub">Orchestration demo · barrypan10/RCSA-Workstream</span>
@@ -25,7 +26,26 @@
     <button id="reset-btn" class="btn" title="Reset to initial state">Reset simulation</button>
   </header>
 
-  <main class="app">
+  <nav class="tabbar" role="tablist" aria-label="Main views">
+    <button class="tab is-active" role="tab" data-tab="map" aria-selected="true" aria-controls="tab-map">
+      <span class="tab-num">1</span>
+      <span class="tab-label">Workflow Map</span>
+      <span class="tab-sub">Where you are in the workstream</span>
+    </button>
+    <button class="tab" role="tab" data-tab="detail" aria-selected="false" aria-controls="tab-detail">
+      <span class="tab-num">2</span>
+      <span class="tab-label">Step Detail</span>
+      <span class="tab-sub" id="tab-detail-sub">GRC view of selected step</span>
+    </button>
+    <div class="tabbar-spacer"></div>
+    <button class="tab tab-report is-hidden" role="tab" data-tab="report" aria-selected="false" aria-controls="tab-report">
+      <span class="tab-label">📄 Findings Report</span>
+      <span class="tab-sub">Available after 2LOD approval</span>
+    </button>
+  </nav>
+
+  <!-- Tab 1: Workflow Map -->
+  <main class="app" id="tab-map" role="tabpanel">
 
     <section class="canvas-wrap" aria-label="Workflow swimlane">
       <div class="canvas-header">
@@ -48,6 +68,16 @@
       <!-- detail panel injected by app.js -->
     </aside>
 
+  </main>
+
+  <!-- Tab 2: Step Detail (GRC-style) -->
+  <main class="detail-view is-hidden" id="tab-detail" role="tabpanel">
+    <!-- injected by app.js -->
+  </main>
+
+  <!-- Tab 3: Findings Report (only available after Step 11 approval) -->
+  <main class="report-view is-hidden" id="tab-report" role="tabpanel">
+    <!-- injected by app.js -->
   </main>
 
   <section class="audit" id="audit">
