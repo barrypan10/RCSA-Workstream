@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cyber RCSA — AI-Enabled Workflow Demo</title>
+  <meta name="description" content="Interactive demo of an AI-assisted Cyber RCSA workflow with swimlane orchestration, decision routing, and human-in-the-loop governance." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">RC</div>
+      <div class="brand-text">
+        <span class="title">Cyber RCSA — AI-Enabled Workflow</span>
+        <span class="sub">Orchestration demo · barrypan10/RCSA-Workstream</span>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="state-pill">
+      <span class="dot"></span>
+      <span id="state-pill-text">Initializing…</span>
+    </div>
+    <button id="reset-btn" class="btn" title="Reset to initial state">Reset simulation</button>
+  </header>
+
+  <main class="app">
+
+    <section class="canvas-wrap" aria-label="Workflow swimlane">
+      <div class="canvas-header">
+        <h2>Workflow Orchestration</h2>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch legend-ai"></span> AI step</span>
+          <span class="legend-item"><span class="legend-swatch legend-human"></span> Human checkpoint</span>
+          <span class="legend-item"><span class="legend-swatch legend-decision"></span> Decision</span>
+          <span class="legend-item"><span class="legend-swatch legend-loop"></span> Loop-back</span>
+        </div>
+      </div>
+      <div class="canvas-scroll">
+        <div id="swimlanes" class="swimlanes" role="group" aria-label="Process swimlanes">
+          <!-- lanes + nodes injected by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <aside id="panel" class="panel" aria-live="polite">
+      <!-- detail panel injected by app.js -->
+    </aside>
+
+  </main>
+
+  <section class="audit" id="audit">
+    <div class="audit-head" id="audit-head">
+      <h2>Audit Trail</h2>
+      <span class="count" id="audit-count">0 events</span>
+      <span class="toggle" id="audit-toggle">▾</span>
+    </div>
+    <div class="audit-list" id="audit-list">
+      <div class="audit-empty">No events yet. Begin the simulation from the Trigger Event.</div>
+    </div>
+  </section>
+
+  <script src="assets/workflow.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
