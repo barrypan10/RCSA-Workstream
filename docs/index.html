@@ -19,12 +19,18 @@
       </div>
     </div>
     <div class="spacer"></div>
+    <button id="prereq-chip" class="prereq-chip is-hidden" type="button" title="View ingested Prerequisites Pack">
+      <span class="prereq-chip-icon">📥</span>
+      <span class="prereq-chip-text">Pack loaded · 5 sections</span>
+    </button>
     <div class="state-pill">
       <span class="dot"></span>
       <span id="state-pill-text">Initializing…</span>
     </div>
     <label class="demo-voice-toggle" title="Read the script aloud during Demo Mode using browser text-to-speech"><input type="checkbox" id="demo-voice-cb" checked /><span>🔊 Voiceover</span></label>
-    <button id="demo-btn" class="btn btn-primary" title="Auto-run a 90-second guided walkthrough with AI highlights">▶ Demo Mode (1:30)</button>
+    <button id="ai-settings-btn" class="btn ai-settings-btn" type="button" title="Configure your org's OpenAI-compatible LLM gateway (URL, key, optional model) to enable live AI at Step 2 and Step 10">⚙ API <span id="ai-status-dot" class="ai-status-dot static" aria-hidden="true"></span></button>
+    <button id="autopilot-btn" class="btn btn-secondary" type="button" title="Run the full RCSA cycle hands-free, end-to-end, and land on the Findings Report">🤖 Auto-Pilot</button>
+    <button id="demo-btn" class="btn btn-primary" title="Auto-run a guided walkthrough with AI highlights">▶ Demo Mode</button>
     <button id="reset-btn" class="btn" title="Reset to initial state">Reset</button>
   </header>
 
@@ -34,6 +40,15 @@
   <div id="demo-stop" class="demo-stop-floating is-hidden">
     <span class="demo-stop-label">▶ Demo running…</span>
     <button id="demo-stop-btn" class="btn">Stop</button>
+  </div>
+
+  <div id="auto-banner" class="auto-banner is-hidden" role="status" aria-live="polite">
+    <span class="auto-banner-icon">🤖</span>
+    <span class="auto-banner-text">
+      <strong>Auto-Pilot running</strong>
+      <span id="auto-banner-progress">step 1 of 13 · Trigger Event</span>
+    </span>
+    <button id="autopilot-stop-btn" class="btn">Stop</button>
   </div>
 
   <nav class="tabbar" role="tablist" aria-label="Main views">
@@ -101,6 +116,139 @@
     </div>
   </section>
 
+  <!-- Workflow chat — floating button + slide-up panel.
+       Asks the configured LLM gateway questions about this RCSA workflow,
+       grounded in the current state (active step, decisions, prereq pack). -->
+  <button id="chat-fab" class="chat-fab" type="button" disabled
+          title="Configure ⚙ API to enable chat">
+    <span class="chat-fab-icon">💬</span>
+    <span class="chat-fab-label">Ask about this workflow</span>
+  </button>
+
+  <aside id="chat-panel" class="chat-panel is-hidden" role="dialog"
+         aria-modal="false" aria-labelledby="chat-panel-title">
+    <header class="chat-panel-head">
+      <div>
+        <h2 id="chat-panel-title">Workflow assistant</h2>
+        <p class="chat-panel-sub">Grounded in the current cycle · powered by your configured LLM</p>
+      </div>
+      <div class="chat-panel-head-actions">
+        <button class="btn" id="chat-clear-btn"  type="button" title="Clear conversation">Clear</button>
+        <button class="btn" id="chat-close-btn"  type="button" title="Close" aria-label="Close">✕</button>
+      </div>
+    </header>
+    <div id="chat-messages" class="chat-messages">
+      <div class="chat-msg chat-msg-system">
+        Ask anything about this RCSA workflow — the steps, the AI checkpoints, current state, what a control or risk means, why a decision routed somewhere, etc.
+      </div>
+    </div>
+    <form id="chat-form" class="chat-form" autocomplete="off">
+      <textarea id="chat-input" class="chat-input" rows="2"
+                placeholder="e.g. What does Step 7 do? Why did 2LOD flag R-05?"
+                aria-label="Question"></textarea>
+      <button id="chat-send" class="btn btn-primary" type="submit" disabled>Send</button>
+    </form>
+  </aside>
+
+  <!-- Prerequisites Pack upload modal — blocks the swimlane until a pack is ingested. -->
+  <div id="prereq-modal" class="prereq-modal" role="dialog" aria-modal="true" aria-labelledby="prereq-modal-title">
+    <div class="prereq-modal-scrim"></div>
+    <div class="prereq-modal-card" role="document">
+      <header class="prereq-modal-head">
+        <div class="prereq-modal-icon">📥</div>
+        <div>
+          <h2 id="prereq-modal-title">Insert RCSA Prerequisites Pack</h2>
+          <p class="prereq-modal-sub">👋 <strong>Drop your RCSA Prerequisites Pack into the box below to begin.</strong> Drag a <code>.xlsx</code> in, or click <strong>Browse…</strong> to pick one.</p>
+        </div>
+      </header>
+
+      <div class="prereq-dropzone" id="prereq-dropzone" tabindex="0" aria-label="Drop a .xlsx prerequisites pack here, or use the buttons below">
+        <div class="prereq-dropzone-inner">
+          <div class="prereq-dropzone-icon">⬇</div>
+          <div class="prereq-dropzone-text">Drag your <strong>.xlsx</strong> pack here</div>
+          <div class="prereq-dropzone-sep">— or —</div>
+          <div class="prereq-dropzone-actions">
+            <button class="btn btn-primary" id="prereq-browse-btn" type="button">Browse…</button>
+          </div>
+          <input type="file" id="prereq-file-input" accept=".xlsx" style="display:none;" />
+        </div>
+
+      </div>
+
+      <div class="prereq-required">
+        <div class="prereq-required-label">Required sections (5)</div>
+        <ul class="prereq-checklist" id="prereq-checklist">
+          <li data-key="risks"   class="prereq-checklist-item"><span class="ck-icon">○</span><span class="ck-label">Risk &amp; Control Inventory</span></li>
+          <li data-key="assets"  class="prereq-checklist-item"><span class="ck-icon">○</span><span class="ck-label">Asset &amp; Ownership Inventory</span></li>
+          <li data-key="prior"   class="prereq-checklist-item"><span class="ck-icon">○</span><span class="ck-label">Prior RCSA &amp; Open Issues</span></li>
+          <li data-key="policy"  class="prereq-checklist-item"><span class="ck-icon">○</span><span class="ck-label">Policies &amp; Regulatory Requirements</span></li>
+          <li data-key="evidence"class="prereq-checklist-item"><span class="ck-icon">○</span><span class="ck-label">Evidence &amp; Monitoring Data</span></li>
+        </ul>
+      </div>
+
+      <footer class="prereq-modal-foot">
+        <div class="prereq-filename" id="prereq-filename" aria-live="polite">No file selected.</div>
+        <button id="prereq-begin-btn" class="btn btn-primary" type="button" disabled>Begin RCSA cycle →</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- LLM Gateway Settings modal — paste credentials for an org-issued
+       OpenAI-compatible LLM gateway to enable live AI at Step 2 + Step 10. -->
+  <div id="ai-settings-modal" class="prereq-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="ai-settings-title">
+    <div class="prereq-modal-scrim" data-ai-settings-close></div>
+    <div class="prereq-modal-card" role="document">
+      <header class="prereq-modal-head">
+        <div class="prereq-modal-icon">⚙</div>
+        <div>
+          <h2 id="ai-settings-title">LLM Gateway Settings</h2>
+          <p class="prereq-modal-sub">Point the demo at your organization's OpenAI-compatible LLM gateway to switch the AI checkpoints from static demo content to live calls.</p>
+        </div>
+      </header>
+
+      <div id="ai-file-origin-warning" class="ai-warn is-hidden">
+        ⚠ You're viewing this from <code>file://</code>. The browser will block any live AI call before it reaches the gateway. Run <code>py scripts/serve.py</code> from the repo root, then open <code>http://localhost:8000/</code> instead. The static demo (Demo Mode, Auto-Pilot) keeps working as-is.
+      </div>
+
+      <div class="ai-status-row">
+        <span id="ai-status-chip" class="ai-status-chip static">○ Static mode — no gateway configured</span>
+      </div>
+
+      <label class="ai-key-label">
+        <span class="ai-key-label-text">Gateway base URL</span>
+        <input type="url" id="ai-base-url-input" placeholder="https://gateway.your-org.com" autocomplete="off" spellcheck="false" />
+        <span class="ai-key-hint">The chat-completions endpoint <code>/v1/chat/completions</code> is appended automatically. Don't have one? Ask whoever issued your API key for the gateway base URL — for an org-issued key it's <strong>not</strong> the same as <code>api.openai.com</code>.</span>
+      </label>
+
+      <label class="ai-key-label">
+        <span class="ai-key-label-text">API key</span>
+        <input type="password" id="ai-key-input" placeholder="Bearer token from your gateway" autocomplete="off" spellcheck="false" />
+      </label>
+
+      <label class="ai-key-label">
+        <span class="ai-key-label-text">Model <span class="ai-key-optional">(optional)</span></span>
+        <input type="text" id="ai-model-input" placeholder="leave blank to use the gateway default" autocomplete="off" spellcheck="false" />
+        <span class="ai-key-hint">Examples: <code>gpt-4o-mini</code>, <code>gpt-4.1-mini</code>, <code>claude-3-5-sonnet</code>, or any model your gateway exposes.</span>
+      </label>
+
+      <div class="ai-key-privacy">
+        Credentials are stored only in this browser tab's <code>sessionStorage</code> — gone when you close the tab. They are sent directly to your gateway URL above. If the gateway is corporate-network-only, the live calls won't work from the public GitHub Pages site (you'll see a CORS-aware error and the demo will fall back to static memos).
+      </div>
+
+      <div id="ai-test-result" class="ai-test-result" aria-live="polite"></div>
+
+      <footer class="prereq-modal-foot">
+        <button class="btn" id="ai-key-clear" type="button">Clear settings</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="ai-settings-close" type="button">Close</button>
+          <button class="btn" id="ai-key-test" type="button" disabled>Test connection</button>
+          <button class="btn btn-primary" id="ai-key-save" type="button">Save (this session only)</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="assets/ai-client.js"></script>
   <script src="assets/workflow.js"></script>
   <script src="assets/app.js"></script>
 </body>

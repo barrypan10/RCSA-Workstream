@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This document explains the Cyber RCSA process in a human-readable format. The workflow is a trigger-based, AI-assisted, human-in-the-loop process for identifying cyber risks, evaluating controls, managing remediation, validating residual risk, and supporting ongoing monitoring.
+This document explains the Cyber RCSA process in a human-readable format. The workflow is a trigger-based, human-in-the-loop process for identifying cyber risks, evaluating controls, managing remediation, validating residual risk, and supporting ongoing monitoring.
 
-AI supports the workflow by recommending, summarizing, flagging, and automating tasks. Human owners remain accountable for final decisions, approvals, overrides, and risk acceptance.
+AI is applied selectively — only where it accelerates cross-document synthesis a human cannot realistically perform at speed and scale. Two checkpoints use AI: **Step 2 (Identify Risks)** and **Step 10 (2LOD Check & Challenge)**. Every other step is standard process or decision logic. Human owners remain accountable for all final decisions, approvals, overrides, and risk acceptance.
 
 ---
 
@@ -16,6 +16,22 @@ AI supports the workflow by recommending, summarizing, flagging, and automating 
 | Business / Front Office, 1LOD | Owns the RCSA execution, risk identification, control assessment, remediation, and submission |
 | Risk / Compliance, 2LOD | Performs independent review, check and challenge, and approval or rejection |
 | Monitoring / Audit | Provides KRI, SIEM, audit, and continuous monitoring signals that may retrigger the RCSA cycle |
+
+---
+
+## Prerequisites (Baseline)
+
+A single consolidated **RCSA Prerequisites Pack** is ingested at the start of every cycle. It bundles five baseline categories into one Excel workbook, providing the canonical input for scope, risk, control, evidence, and regulatory context. Without the pack, the cycle does not begin.
+
+| Prerequisite | Purpose |
+|---|---|
+| Risk & Control Inventory | Establishes the baseline risks and mapped controls in scope |
+| Asset & Ownership Inventory | Confirms system owners, application owners, and accountability |
+| Prior RCSA & Open Issues | Carries forward historical risks, gaps, and remediation items |
+| Policies & Regulatory Requirements | Aligns assessment criteria to NIST, NYDFS, SOX, and internal standards |
+| Evidence & Monitoring Data | Ensures logs, KRIs, incidents, and testing evidence are available for validation |
+
+The pack is the singular input to the **Trigger Event** stage that follows. Downstream AI synthesis (Step 2 — Identify Risks) operates over the pack's contents.
 
 ---
 
@@ -32,10 +48,10 @@ Common triggers include:
 - Business or technology change
 - Regulatory change
 
-AI reviews the trigger and recommends whether a full, partial, or no RCSA is required.
+Trigger source and prior-cycle context drive the recommendation of whether a Full, Partial, or No RCSA is required (rule-based: e.g., scheduled annual cycle defaults to Full; a low-severity bulletin with no in-scope overlap defaults to No).
 
 **Human-in-the-loop:**
-The Risk Owner reviews the AI recommendation and either accepts, rejects, or modifies the trigger decision.
+The Risk Owner reviews the recommendation and either accepts, rejects, or modifies the trigger decision.
 
 **Next step:**
 If an RCSA is required, proceed to **Step 1: Define Scope**.
@@ -98,9 +114,7 @@ Proceed to **Step 5: Control Test**.
 
 ## Step 5: Control Test
 
-1LOD tests the mapped controls to determine whether they are operating effectively.
-
-AI may support the process by helping identify failed control results, missing evidence, and potential remediation needs.
+1LOD tests the mapped controls to determine whether they are operating effectively. Control owners execute the test plan and submit evidence (logs, screenshots, ServiceNow records, ticket extracts).
 
 **Output:**
 Control testing result.
@@ -117,9 +131,7 @@ Go to **Step 6: Identify Gaps**.
 
 ## Step 6: Identify Gaps
 
-1LOD identifies gaps where controls are missing, weak, incomplete, or not operating effectively.
-
-AI may help summarize failed control results and identify recurring gap themes.
+1LOD identifies gaps where controls are missing, weak, incomplete, or not operating effectively. Failed and incomplete control results from Step 5 are mapped to thematic gaps and linked to affected risks and applications.
 
 **Output:**
 Documented control gaps.
@@ -131,9 +143,7 @@ Proceed to **Step 7: Remediation Plan**.
 
 ## Step 7: Remediation Plan
 
-1LOD creates a remediation plan to address identified gaps. This may include assigning owners, due dates, Jira tickets, ServiceNow tasks, or status tracking workflows.
-
-AI may draft notifications, create task assignments, and send automated reminders to stakeholders.
+1LOD creates a remediation plan to address identified gaps. This includes assigning owners (sourced from CMDB ownership records), due dates, Jira tickets, ServiceNow tasks, and status tracking workflows. SLA-aware reminders are generated automatically by the workflow platform.
 
 **Human-in-the-loop:**
 Risk Owners and control owners validate and own remediation actions.
@@ -172,10 +182,10 @@ Go back to **Step 6: Identify Gaps** to identify additional gaps or required rem
 
 1LOD prepares the RCSA for submission.
 
-Before submission reaches 2LOD, AI performs a pre-submission quality check. It may flag missing fields, weak justifications, incomplete ratings, or inconsistent information.
+Before submission reaches 2LOD, an automated validation gate runs deterministic checks for missing fields, incomplete ratings, and inherent-vs-residual rating inconsistencies.
 
 **Human-in-the-loop:**
-The Risk Owner resolves flagged items or overrides them with documented justification.
+The Risk Owner resolves flagged items before submitting.
 
 **Output:**
 Submitted RCSA package.
@@ -234,10 +244,10 @@ Monitoring may include:
 - Incident activity
 - Regulatory changes
 
-AI analyzes trends and anomalies to recommend whether a new RCSA cycle should be triggered.
+KRI threshold breaches and SIEM alerts surface monitoring signals; correlated breaches recommend whether a new RCSA cycle should be triggered.
 
 **Human-in-the-loop:**
-The Risk Owner reviews the AI recommendation and accepts or rejects the need to restart the RCSA process.
+The Risk Owner reviews the monitoring signals and accepts or rejects the need to restart the RCSA process.
 
 ### Decision: Is a new RCSA trigger required?
 
@@ -264,14 +274,18 @@ Remain in **Step 12: Monitoring & Review**.
 
 # AI and Human Decision Rights
 
+AI is applied at exactly two checkpoints — both involve cross-document synthesis at a scale humans cannot reasonably perform manually. All other steps are standard human-driven process or rule-based logic.
+
 | Area | AI Role | Human Role |
 |---|---|---|
-| Trigger triage | Recommends full, partial, or no RCSA | Risk Owner accepts, rejects, or modifies |
-| Risk identification | Suggests missed risks and summarizes inputs | Risk Owner validates risks |
-| Gap management | Flags failed controls and drafts remediation tasks | Control owners confirm and execute remediation |
-| Pre-submission QC | Flags missing or weak submission content | Risk Owner resolves or overrides |
-| 2LOD challenge | Identifies outliers and drafts challenge questions | 2LOD Reviewer decides final challenge and approval outcome |
-| Monitoring | Detects KRI/SIEM anomalies and recommends retrigger | Risk Owner approves whether to restart the cycle |
+| **Step 2 — Risk identification** | Synthesizes prior RCSAs, audit findings, incidents, and vulnerability records to surface candidate risks (especially risks the team would otherwise miss) | Risk Owner validates each risk before it enters the register |
+| **Step 10 — 2LOD challenge** | Compares submission against prior cycles and peer applications, flags unexplained rating changes and outliers, drafts independent challenge questions | 2LOD Reviewer decides which challenges to raise and makes the final approval determination |
+
+---
+
+# Live-AI Mode (Demo Implementation)
+
+The reference demo at `barrypan10/RCSA-Workstream` supports an opt-in **Live AI mode** at the same two checkpoints. Demo viewers paste their own Anthropic API key into a topbar settings panel; the key lives only in the browser tab's `sessionStorage`. With a key set, Step 2 and Step 10 call **Claude Haiku 4.5** directly with the ingested Prerequisites Pack as system context, and the Step 10 call reads the prompt cache written by Step 2 (≈90% input-token reduction). Without a key, both checkpoints render the static hand-authored content; the public GitHub Pages site works either way. The "Generate with AI" option in the prereq upload modal uses the same key to fabricate a realistic 5-section pack from a seed (app name + domain) for demo flexibility.
 
 ---
 
